@@ -53,6 +53,9 @@ productRoutes.get(
   getSoftDeletedProducts
 );
 
+//protected route
+productRoutes.get("/myProducts", auth, authorize("seller"), myProducts);
+
 //public route with id in query parameter
 productRoutes.get("/:productId", getSingleProduct);
 productRoutes.get("/:productId/questionsandanswers", getProductQA);
@@ -79,7 +82,7 @@ productRoutes.patch(
 );
 
 //protected route
-productRoutes.get("/myProducts", auth, authorize("seller"), myProducts);
+//productRoutes.get("/myProducts", auth, authorize("seller"), myProducts);
 
 //protected route
 productRoutes.patch(
