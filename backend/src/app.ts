@@ -24,8 +24,15 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors({ origin: true, credentials: true }));
-
+app.use(
+  cors({
+    origin: [
+      "https://shopsphere-a-complete-world-for-shopping.onrender.com",
+      "https://shopsphere-complete-world-for-shopping.lovable.app",
+    ],
+    credentials: true,
+  }),
+);
 // Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
