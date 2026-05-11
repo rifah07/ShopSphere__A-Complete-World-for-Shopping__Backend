@@ -31,12 +31,12 @@ const login = catchAsync(
 
     if (!user.isVerified)
       throw new UnauthorizedError(
-        "Please verify your email before logging in."
+        "Please verify your email before logging in.",
       );
 
     if (user.isBanned)
       throw new ForbiddenError(
-        "Your account has been banned. Contact support."
+        "Your account has been banned. Contact support.",
       );
 
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
@@ -50,7 +50,7 @@ const login = catchAsync(
     const refreshToken = jwt.sign(
       { userId: user._id },
       process.env.REFRESH_TOKEN_SECRET as string,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     // Store refresh token in database
@@ -61,24 +61,40 @@ const login = catchAsync(
     });
 
     // Set cookies
-    res.cookie("accessToken", accessToken, {
+    const cookieOpts = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite:
+        process.env.NODE_ENV === "production"
+          ? ("none" as const)
+          : ("lax" as const),
+      // sameSite: "none" REQUIRES secure: true (https), which Render provides.
+    };
+
+    res.cookie("accessToken", accessToken, {
+      ...cookieOpts,
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 
     res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      ...cookieOpts,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
     res.status(200).json({
       status: "Login successful!",
-      // accessToken,
-      // refreshToken,
+      token: accessToken, // <-- frontend reads this
+      refreshToken, // optional
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        image: user.image,
+        isVerified: user.isVerified,
+      },
     });
-  }
+  },
 );
 
 export default login;

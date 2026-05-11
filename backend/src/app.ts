@@ -24,7 +24,15 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors({ origin: true, credentials: true }));
+app.use(
+  cors({
+    origin: [
+      "https://shopsphere-complete-world-for-shopping.lovable.app",
+      /\.lovable\.app$/,
+    ],
+    credentials: true,
+  }),
+);
 
 // Rate Limiting
 const limiter = rateLimit({
@@ -88,7 +96,6 @@ app.get("/", (req: Request, res: Response) => {
     },
   });
 });
-
 
 /*
 app.all("*", (req: Request, res: Response) => {

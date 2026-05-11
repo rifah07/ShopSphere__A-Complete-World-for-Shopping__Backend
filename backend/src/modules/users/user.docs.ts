@@ -69,7 +69,6 @@
  *               $ref: '#/components/schemas/Error500'
  */
 
-
 /**
  * @swagger
  * /users/verify-email:
@@ -114,7 +113,6 @@
  *             schema:
  *               $ref: '#/components/schemas/Error500'
  */
-
 
 /**
  * @swagger
@@ -189,7 +187,6 @@
  *               $ref: '#/components/schemas/Error500'
  */
 
-
 /**
  * @swagger
  * /users/login:
@@ -216,7 +213,7 @@
  *                 example: "StrongPassword123"
  *     responses:
  *       200:
- *         description: Successful login. Access and refresh tokens set in cookies.
+ *         description: Successful login. Tokens returned in body and set as cookies.
  *         content:
  *           application/json:
  *             schema:
@@ -225,6 +222,32 @@
  *                 status:
  *                   type: string
  *                   example: "Login successful!"
+ *                 token:
+ *                   type: string
+ *                   description: JWT access token (also set as httpOnly cookie)
+ *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                 refreshToken:
+ *                   type: string
+ *                   description: JWT refresh token (also set as httpOnly cookie)
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                       example: "6952aa2f7fba5be741ee78a8"
+ *                     name:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                       format: email
+ *                     role:
+ *                       type: string
+ *                       enum: [buyer, seller, admin]
+ *                     image:
+ *                       type: string
+ *                     isVerified:
+ *                       type: boolean
+ *
  *       400:
  *         description: Validation error (e.g., missing fields or invalid email)
  *         content:
@@ -256,7 +279,6 @@
  *             schema:
  *               $ref: '#/components/schemas/Error500'
  */
-
 
 /**
  * @swagger
@@ -322,7 +344,6 @@
  *             schema:
  *               $ref: '#/components/schemas/Error500'
  */
-
 
 /**
  * @swagger
@@ -394,7 +415,6 @@
  *               $ref: '#/components/schemas/Error500'
  */
 
-
 /**
  * @swagger
  * /users/refresh-token:
@@ -445,8 +465,6 @@
  *                 error:
  *                   type: object
  */
-
-
 
 /**
  * @swagger
@@ -529,7 +547,6 @@
  *               $ref: '#/components/schemas/Error500'
  */
 
-
 /**
  * @swagger
  * /users/profile:
@@ -593,7 +610,6 @@
  *             schema:
  *               $ref: '#/components/schemas/Error500'
  */
-
 
 /**
  * @swagger
@@ -699,7 +715,6 @@
  *               $ref: '#/components/schemas/Error500'
  */
 
-
 /**
  * @swagger
  * /users/logout:
@@ -736,7 +751,6 @@
  *             schema:
  *               $ref: '#/components/schemas/Error500'
  */
-
 
 /**
  * @swagger
@@ -781,8 +795,6 @@
  *               $ref: '#/components/schemas/Error500'
  */
 
-
-
 /**
  * @swagger
  * /users/all:
@@ -817,7 +829,6 @@
  *       500:
  *         description: Server error
  */
-
 
 /**
  * @swagger
@@ -857,7 +868,6 @@
  *       500:
  *         description: Server error
  */
-
 
 /**
  * @swagger
