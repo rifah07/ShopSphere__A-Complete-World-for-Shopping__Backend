@@ -9,7 +9,7 @@ const createProduct = catchAsync(
     const parsedData = createProductSchema.parse({ body: req.body }).body;
     const product = await Product.create({
       ...parsedData,
-      seller: req.user?.id, // Only logged in users can create
+      seller: req.user?.id, // Only logged in sellers can create
     });
 
     res.status(201).json({
