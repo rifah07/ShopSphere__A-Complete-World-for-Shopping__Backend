@@ -19,6 +19,7 @@ import couponRoutes from "./modules/coupon/coupons.routes";
 import reviewRoutes from "./modules/review/review.routes";
 import revenueRoutes from "./modules/revenue/revenue.routes";
 import { setupSwagger } from "./swagger/setup";
+import scrapingRoutes from "./modules/scraping/scraping.routes";
 
 dotenv.config();
 
@@ -71,6 +72,7 @@ app.use("/api/refunds", refundRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use("/api/revenue", revenueRoutes);
 app.use("/api/review", reviewRoutes);
+app.use("/api/scraping", scrapingRoutes);
 
 //end of routes
 
