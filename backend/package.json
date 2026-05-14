@@ -29,6 +29,7 @@
     "mongoose": "^8.13.2",
     "morgan": "^1.10.0",
     "nodemailer": "^8.0.7",
+    "puppeteer-core": "^24.43.1",
     "stripe": "^18.1.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",

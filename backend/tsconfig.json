@@ -1,15 +1,15 @@
 {
   "compilerOptions": {
-    "target": "ES2020",                     // Modern JS output
-    "module": "commonjs",                   // Required for Node.js
-    "rootDir": "./src",                     // Source code location
-    "outDir": "./dist",                     // Where compiled files go
-    "strict": true,                         // Enable strict typing
-    "moduleResolution": "node",            // Allows imports from node_modules
-    "esModuleInterop": true,               // Allows default imports from CommonJS modules
+    "target": "ES2020",
+    "module": "commonjs",
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "strict": true,
+    "moduleResolution": "node16",
+    "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
   },
-  "include": ["src"],                      // Include only src/
-  "exclude": ["node_modules", "dist"]      // Exclude build output & dependencies
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
 }
