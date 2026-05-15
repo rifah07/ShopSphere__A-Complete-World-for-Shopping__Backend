@@ -6,13 +6,16 @@ import { NotFoundError } from "../../../utils/errors";
 const updateCoupon = async (
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
-  const { code } = req.params;
+  const code = Array.isArray(req.params.code)
+    ? req.params.code[0]
+    : req.params.code;
+
   const updatedCoupon = await Coupon.findOneAndUpdate(
     { code: code.toUpperCase() },
     req.body,
-    { new: true, runValidators: true }
+    { new: true, runValidators: true },
   );
   if (!updatedCoupon) {
     throw new NotFoundError("Coupon not found");

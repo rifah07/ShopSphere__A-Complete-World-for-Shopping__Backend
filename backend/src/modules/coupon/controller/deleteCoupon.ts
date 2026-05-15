@@ -4,7 +4,9 @@ import Coupon from "../../../models/coupon.model";
 import { NotFoundError } from "../../../utils/errors";
 
 const deleteCoupon = async (req: AuthRequest, res: Response) => {
-  const { code } = req.params;
+  const code = Array.isArray(req.params.code)
+    ? req.params.code[0]
+    : req.params.code;
 
   const deletedCoupon = await Coupon.findOneAndDelete({
     code: code.toUpperCase(),

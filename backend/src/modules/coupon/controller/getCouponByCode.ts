@@ -1,21 +1,29 @@
 import { Response, NextFunction } from "express";
 import { AuthRequest } from "../../../middlewares/authMiddleware";
 import Coupon from "../../../models/coupon.model";
-import { NotFoundError, UnauthorizedError } from "../../../utils/errors";
+import {
+  BadRequestError,
+  NotFoundError,
+  UnauthorizedError,
+} from "../../../utils/errors";
 
 const getCouponByCode = async (
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const { code } = req.params;
+    const codeStr = Array.isArray(code) ? code[0] : code;
 
+    if (!codeStr) {
+      return next(new BadRequestError("Coupon code is required"));
+    }
+
+    const coupon = await Coupon.findOne({ code: codeStr.toUpperCase() });
     if (!req.user) {
       return next(new UnauthorizedError("Authentication required."));
     }
-
-    const coupon = await Coupon.findOne({ code: code.toUpperCase() });
 
     if (!coupon) {
       return next(new NotFoundError("Coupon not found"));
@@ -28,7 +36,7 @@ const getCouponByCode = async (
       String(coupon.seller) !== req.user.id
     ) {
       return next(
-        new UnauthorizedError("You are not authorized to view this coupon.")
+        new UnauthorizedError("You are not authorized to view this coupon."),
       );
     }
 
