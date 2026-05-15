@@ -11,24 +11,25 @@ import { AuthRequest } from "../../../middlewares/authMiddleware";
 const updateCartItemQuantity = async (
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const userId = req.user?.id;
     if (!userId) return next(new UnauthorizedError("Unauthorized"));
 
     const { productId } = req.params;
+    const productIdStr = Array.isArray(productId) ? productId[0] : productId;
     const { quantity } = req.body;
 
-    if (!productId) {
+    if (!productIdStr) {
       return next(new BadRequestError("Product ID is required"));
     }
 
     if (!quantity || typeof quantity !== "number" || quantity < 1) {
       return next(
         new BadRequestError(
-          "Valid quantity is required (must be a positive number)"
-        )
+          "Valid quantity is required (must be a positive number)",
+        ),
       );
     }
 
@@ -39,8 +40,8 @@ const updateCartItemQuantity = async (
 
     const itemIndex = cart.items.findIndex((item: ICartItem) =>
       item.product instanceof mongoose.Types.ObjectId
-        ? item.product.equals(productId)
-        : String(item.product) === productId
+        ? item.product.equals(productIdStr)
+        : String(item.product) === productIdStr,
     );
 
     if (itemIndex === -1) {

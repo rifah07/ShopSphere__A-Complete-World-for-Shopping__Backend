@@ -11,14 +11,16 @@ import { AuthRequest } from "../../../middlewares/authMiddleware";
 const removeFromCart = async (
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const userId = req.user?.id;
     if (!userId) return next(new UnauthorizedError("Unauthorized"));
 
     const { productId } = req.params;
-    if (!productId) {
+    const productIdStr = Array.isArray(productId) ? productId[0] : productId;
+
+    if (!productIdStr) {
       return next(new BadRequestError("Product ID is required"));
     }
 
@@ -31,8 +33,8 @@ const removeFromCart = async (
 
     cart.items = cart.items.filter((item: ICartItem) => {
       return !(item.product instanceof mongoose.Types.ObjectId
-        ? item.product.equals(productId)
-        : String(item.product) === productId);
+        ? item.product.equals(productIdStr)
+        : String(item.product) === productIdStr);
     });
 
     if (cart.items.length === originalLength) {
