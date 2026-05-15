@@ -32,7 +32,7 @@ export const createOrderValidation = [
     .if((value, { req }) => !req.body.useCart)
     .isArray({ min: 1 })
     .withMessage(
-      "Products array must contain at least one item for direct order"
+      "Products array must contain at least one item for direct order",
     ),
   body("products.*.productId")
     .if((value, { req }) => !req.body.useCart)
@@ -70,7 +70,7 @@ export const createOrderValidation = [
 const createOrder = async (
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const userId = req.user?.id;
   if (!userId) return next(new UnauthorizedError("Unauthorized"));
@@ -105,7 +105,7 @@ const createOrder = async (
 
   const calculateItemPriceWithDiscount = (
     product: IProduct,
-    quantity: number
+    quantity: number,
   ) => {
     let discountedPrice = product.price;
     let itemDiscount = 0;
@@ -141,7 +141,7 @@ const createOrder = async (
       const itemsToProcess = productIdFromBody
         ? cart.items.filter(
             (item: ICartItem) =>
-              String((item.product as IProduct)._id) === productIdFromBody
+              String((item.product as IProduct)._id) === productIdFromBody,
           )
         : cart.items;
 
@@ -179,7 +179,7 @@ const createOrder = async (
       }
       if (!isValidObjectId(item.productId)) {
         return next(
-          new BadRequestError(`Invalid product ID: ${item.productId}`)
+          new BadRequestError(`Invalid product ID: ${item.productId}`),
         );
       }
 
@@ -190,12 +190,12 @@ const createOrder = async (
       });
       if (!product) {
         return next(
-          new NotFoundError(`Product with ID ${item.productId} not found`)
+          new NotFoundError(`Product with ID ${item.productId} not found`),
         );
       }
       if (item.quantity > product.stock) {
         return next(
-          new BadRequestError(`Not enough stock for ${product.name}`)
+          new BadRequestError(`Not enough stock for ${product.name}`),
         );
       }
 
@@ -206,7 +206,7 @@ const createOrder = async (
       } = calculateItemPriceWithDiscount(product, item.quantity);
 
       const existingItem = orderItems.find(
-        (oi) => String(oi.product) === item.productId
+        (oi) => String(oi.product) === item.productId,
       );
       if (existingItem) {
         existingItem.quantity += item.quantity;
@@ -242,8 +242,8 @@ const createOrder = async (
   if (!shippingAddress) {
     return next(
       new BadRequestError(
-        "Shipping address is required. Please provide an address or update your account with a default address."
-      )
+        "Shipping address is required. Please provide an address or update your account with a default address.",
+      ),
     );
   }
   if (
@@ -252,8 +252,8 @@ const createOrder = async (
   ) {
     return next(
       new BadRequestError(
-        "A valid shipping address is required. Please provide an address."
-      )
+        "A valid shipping address is required. Please provide an address.",
+      ),
     );
   }
 
@@ -275,8 +275,8 @@ const createOrder = async (
       ) {
         return next(
           new BadRequestError(
-            `Minimum order value for this coupon is ${coupon.minOrderValue}`
-          )
+            `Minimum order value for this coupon is ${coupon.minOrderValue}`,
+          ),
         );
       }
       if (coupon.usageLimit && coupon.usageCount >= coupon.usageLimit) {
@@ -291,7 +291,7 @@ const createOrder = async (
       }
       couponDiscountAmount = Math.min(
         couponDiscountAmount,
-        totalPriceBeforeDiscount
+        totalPriceBeforeDiscount,
       );
     } else {
       console.log(`Coupon code "${couponCode}" is invalid or not active.`);
@@ -303,7 +303,7 @@ const createOrder = async (
     (couponDiscountAmount +
       orderItems.reduce(
         (sum, item) => sum + item.discountAmountForItem * item.quantity,
-        0
+        0,
       ));
 
   let paymentStatus: "unpaid" | "paid" = "unpaid";
@@ -312,7 +312,7 @@ const createOrder = async (
     const paymentResult = await processStripePayment(
       finalPrice,
       paymentMethodId,
-      next
+      next,
     );
     if (!paymentResult) return;
     paymentStatus = "paid";
@@ -344,7 +344,7 @@ const createOrder = async (
       couponDiscountAmount +
       orderItems.reduce(
         (sum, item) => sum + item.discountAmountForItem * item.quantity,
-        0
+        0,
       ),
     finalPrice,
   });
@@ -374,7 +374,7 @@ const createOrder = async (
         const cartItemIndex = cart.items.findIndex(
           (item: ICartItem) =>
             String(item.product as Types.ObjectId) ===
-            String(orderedItem.product)
+            String(orderedItem.product),
         );
         if (cartItemIndex !== -1) {
           cart.items[cartItemIndex].quantity -= orderedItem.quantity;
@@ -385,7 +385,7 @@ const createOrder = async (
       }
       cart.items = cart.items.filter(
         (item) =>
-          !itemsToRemove.includes(String(item.product as Types.ObjectId))
+          !itemsToRemove.includes(String(item.product as Types.ObjectId)),
       );
       await cart.save();
     }
