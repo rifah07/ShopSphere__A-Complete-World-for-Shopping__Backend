@@ -3,7 +3,7 @@ import { IProduct } from "./product.model";
 import { IUser } from "./user.model";
 
 export interface ICartItem {
-  product: IProduct["_id"];
+  product: mongoose.Types.ObjectId | IProduct; // ← union type
   quantity: number;
 }
 
@@ -33,8 +33,9 @@ const CartSchema: Schema = new Schema(
     ],
     defaultShippingAddress: { type: String, required: true },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
+
 const Cart = mongoose.model<ICart>("Cart", CartSchema);
 
 export default Cart;
