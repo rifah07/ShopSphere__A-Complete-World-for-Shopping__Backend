@@ -5,14 +5,15 @@ import Review from "../../../models/review.model";
 import { BadRequestError, NotFoundError } from "../../../utils/errors";
 import { isValidObjectId, Types } from "mongoose";
 import updateProductRating from "./updateProductRating";
+import { getParam } from "../../../utils/param";
 
 const createReview = async (
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
-    const { productId } = req.params;
+    const productId = getParam(req.params.productId);
     const { rating, comment } = req.body;
     const userId = req.user?.id;
 
@@ -22,7 +23,7 @@ const createReview = async (
 
     if (typeof rating !== "number" || rating < 1 || rating > 5) {
       return next(
-        new BadRequestError("Rating must be a number between 1 and 5")
+        new BadRequestError("Rating must be a number between 1 and 5"),
       );
     }
 
@@ -37,7 +38,7 @@ const createReview = async (
     });
     if (existingReview) {
       return next(
-        new BadRequestError("You have already reviewed this product")
+        new BadRequestError("You have already reviewed this product"),
       );
     }
 

@@ -8,14 +8,16 @@ import {
 } from "../../../utils/errors";
 import Review from "../../../models/review.model";
 import updateProductRating from "./updateProductRating";
+import { getParam } from "../../../utils/param";
 
 const updateReview = async (
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
-    const { productId, reviewId } = req.params;
+    const productId = getParam(req.params.productId);
+    const reviewId = getParam(req.params.reviewId);
     const { rating, comment } = req.body;
     const userId = req.user?.id;
 
@@ -28,7 +30,7 @@ const updateReview = async (
       (typeof rating !== "number" || rating < 1 || rating > 5)
     ) {
       return next(
-        new BadRequestError("Rating must be a number between 1 and 5")
+        new BadRequestError("Rating must be a number between 1 and 5"),
       );
     }
 
@@ -39,7 +41,7 @@ const updateReview = async (
 
     if (String(review.user) !== userId) {
       return next(
-        new UnauthorizedError("You are not authorized to update this review")
+        new UnauthorizedError("You are not authorized to update this review"),
       );
     }
 

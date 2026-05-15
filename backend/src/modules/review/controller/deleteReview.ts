@@ -8,14 +8,16 @@ import {
   UnauthorizedError,
 } from "../../../utils/errors";
 import updateProductRating from "./updateProductRating";
+import { getParam } from "../../../utils/param";
 
 const deleteReview = async (
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
-    const { productId, reviewId } = req.params;
+    const productId = getParam(req.params.productId);
+    const reviewId = getParam(req.params.reviewId);
     const userId = req.user?.id;
     const userRole = req.user?.role;
 
@@ -30,7 +32,7 @@ const deleteReview = async (
 
     if (String(review.user) !== userId && userRole !== "admin") {
       return next(
-        new UnauthorizedError("You are not authorized to delete this review")
+        new UnauthorizedError("You are not authorized to delete this review"),
       );
     }
 
