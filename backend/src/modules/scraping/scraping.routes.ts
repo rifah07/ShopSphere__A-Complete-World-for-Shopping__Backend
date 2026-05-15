@@ -10,7 +10,7 @@ import authorize from "../../middlewares/authorize";
 const router = Router();
 
 // GET  /api/scraping/price-suggestion/:productId
-router.get(
+router.post(
   "/price-suggestion/:productId",
   auth,
   authorize("seller", "admin"),

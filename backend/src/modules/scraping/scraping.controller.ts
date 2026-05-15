@@ -11,7 +11,7 @@ import {
 import Product from "../../models/product.model";
 import { AuthRequest } from "../../middlewares/authMiddleware";
 
-// GET /api/scraping/price-suggestion/:productId
+// POST /api/scraping/price-suggestion/:productId
 export const getPriceSuggestionForProduct = async (
   req: AuthRequest,
   res: Response,

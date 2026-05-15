@@ -60,7 +60,7 @@
 /**
  * @openapi
  * /scraping/price-suggestion/{productId}:
- *   get:
+ *   post:
  *     summary: Get competitor price suggestion for an existing product
  *     description: >
  *       Scrapes competitor sites (Daraz, Chaldal, and any optional URLs)
