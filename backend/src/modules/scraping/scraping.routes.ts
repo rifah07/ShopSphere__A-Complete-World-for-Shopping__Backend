@@ -4,23 +4,17 @@ import {
   getManualPriceSuggestion,
   scrapeSingleURL,
 } from "./scraping.controller";
-// import { protect, sellerOnly } from "../../middlewares/authMiddleware";
+import auth from "../../middlewares/authMiddleware";
 
 const router = Router();
 
 // GET  /api/scraping/price-suggestion/:productId
-router.get(
-  "/price-suggestion/:productId",
-  /* protect, sellerOnly, */ getPriceSuggestionForProduct,
-);
+router.get("/price-suggestion/:productId", auth, getPriceSuggestionForProduct);
 
 // POST /api/scraping/price-suggestion/manual
-router.post(
-  "/price-suggestion/manual",
-  /* protect, sellerOnly, */ getManualPriceSuggestion,
-);
+router.post("/price-suggestion/manual", auth, getManualPriceSuggestion);
 
 // POST /api/scraping/scrape-url
-router.post("/scrape-url", /* protect, sellerOnly, */ scrapeSingleURL);
+router.post("/scrape-url", auth, scrapeSingleURL);
 
 export default router;

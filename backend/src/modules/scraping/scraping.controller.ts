@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import {
   getCompetitorPriceSuggestion,
   scrapeDirectURL,
@@ -9,10 +9,11 @@ import {
   productSuggestionSchema,
 } from "./scraping.validator";
 import Product from "../../models/product.model";
+import { AuthRequest } from "../../middlewares/authMiddleware";
 
 // GET /api/scraping/price-suggestion/:productId
 export const getPriceSuggestionForProduct = async (
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> => {
   try {
@@ -30,11 +31,10 @@ export const getPriceSuggestionForProduct = async (
       return;
     }
 
-    // Uncomment when auth middleware is ready:
-    // if (product.seller.toString() !== req.user._id.toString()) {
-    //   res.status(403).json({ success: false, message: "Forbidden" });
-    //   return;
-    // }
+    if (product.seller.toString() !== req.user?.id) {
+      res.status(403).json({ success: false, message: "Forbidden" });
+      return;
+    }
 
     const suggestion = await getCompetitorPriceSuggestion(
       product.name,
@@ -51,7 +51,7 @@ export const getPriceSuggestionForProduct = async (
 // POST /api/scraping/price-suggestion/manual
 // Body: { productName, yourPrice, competitorUrls? }
 export const getManualPriceSuggestion = async (
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> => {
   try {
@@ -78,7 +78,7 @@ export const getManualPriceSuggestion = async (
 // POST /api/scraping/scrape-url
 // Body: { url }
 export const scrapeSingleURL = async (
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> => {
   try {
