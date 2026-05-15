@@ -4,12 +4,12 @@ import { BadRequestError } from "../utils/errors";
 import { AuthRequest } from "../middlewares/authMiddleware";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: "2025-04-30.basil",
+  apiVersion: "2025-08-27.basil",
 });
 export const processStripePayment = async (
   amount: number,
   paymentMethodId: string,
-  next: Function
+  next: Function,
 ) => {
   try {
     const paymentIntent = await stripe.paymentIntents.create({
@@ -19,8 +19,8 @@ export const processStripePayment = async (
       confirm: true,
       automatic_payment_methods: {
         enabled: true,
-        allow_redirects: 'never'
-      }
+        allow_redirects: "never",
+      },
     });
 
     if (paymentIntent.status !== "succeeded") {
@@ -29,14 +29,13 @@ export const processStripePayment = async (
 
     return paymentIntent;
   } catch (error) {
-    return next(new BadRequestError(`Stripe payment error: ${(error as Error).message}`));
+    return next(
+      new BadRequestError(`Stripe payment error: ${(error as Error).message}`),
+    );
   }
 };
 
-export const processPaypalPayment = async (
-  amount: number,
-  next: Function
-) => {
+export const processPaypalPayment = async (amount: number, next: Function) => {
   try {
     const authResponse = await axios.post(
       `${process.env.PAYPAL_MODE === "sandbox" ? "https://api-m.sandbox.paypal.com" : "https://api-m.paypal.com"}/v1/oauth2/token`,
@@ -47,7 +46,7 @@ export const processPaypalPayment = async (
           password: process.env.PAYPAL_CLIENT_SECRET as string,
         },
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      }
+      },
     );
 
     const orderResponse = await axios.post(
@@ -68,7 +67,7 @@ export const processPaypalPayment = async (
           Authorization: `Bearer ${authResponse.data.access_token}`,
           "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     if (!orderResponse.data || orderResponse.data.status !== "CREATED") {
@@ -77,6 +76,8 @@ export const processPaypalPayment = async (
 
     return orderResponse.data;
   } catch (error) {
-    return next(new BadRequestError(`PayPal payment error: ${(error as Error).message}`));
+    return next(
+      new BadRequestError(`PayPal payment error: ${(error as Error).message}`),
+    );
   }
 };

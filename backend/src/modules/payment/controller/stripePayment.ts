@@ -5,13 +5,13 @@ import { AuthRequest } from "../../../middlewares/authMiddleware";
 import { UnauthorizedError } from "../../../utils/errors";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: "2025-04-30.basil",
+  apiVersion: "2025-08-27.basil",
 });
 
 const stripePayment = async (
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const userId = req.user?.id;
   const userRole = req.user?.role;
