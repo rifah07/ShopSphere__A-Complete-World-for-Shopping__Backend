@@ -1,4 +1,3 @@
-import puppeteer from "puppeteer";
 import axios from "axios";
 import * as cheerio from "cheerio";
 
@@ -26,6 +25,14 @@ export interface PriceSuggestion {
 }
 
 // ─────────────────────────────────────────────
+//  Environment check
+//  LESSON: process.env.NODE_ENV is "production"
+//  on Render and "development" on your local machine.
+//  We use this to switch between Puppeteer and Cheerio.
+// ─────────────────────────────────────────────
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
+// ─────────────────────────────────────────────
 //  Helpers
 // ─────────────────────────────────────────────
 
@@ -46,36 +53,55 @@ export interface PriceSuggestion {
 function extractFirstPrice(text: string): number | null {
   const match = text.match(/৳\s*(\d+)/);
   if (match) {
-    const raw = match[1]; // e.g. "12040"
+    const raw = match[1];
 
-    // If followed by % — last 2 digits are the discount percentage
     const withPercent = text.match(/৳\s*(\d+)%/);
     if (withPercent) {
-      const digits = withPercent[1]; // "12040"
-      const priceStr = digits.slice(0, -2); // "120" — remove last 2 (discount %)
+      const digits = withPercent[1];
+      const priceStr = digits.slice(0, -2); // remove last 2 digits (discount %)
       const value = parseFloat(priceStr);
       return isNaN(value) || value === 0 ? null : value;
     }
 
-    // No % — price stands alone
     const value = parseFloat(raw.replace(/,/g, ""));
     return isNaN(value) || value === 0 || value > 100_000 ? null : value;
   }
-
   return null;
 }
 
 /**
- * Launches a headless Chrome browser via Puppeteer.
- *
- * LESSON — Why these flags are needed on Linux:
- * --no-sandbox              → Chrome sandbox requires root on Linux, we skip it
- * --disable-setuid-sandbox  → same reason
- * --disable-dev-shm-usage   → /dev/shm is small on cloud servers, prevents crashes
- * --disable-gpu             → not needed in headless mode, saves memory
+ * Fetch HTML with browser-like headers.
+ * LESSON: Without a real User-Agent, many sites return 403 Forbidden
+ * because they detect it's a bot. We mimic a real Chrome browser.
  */
+async function fetchHTML(url: string): Promise<string> {
+  const { data } = await axios.get<string>(url, {
+    timeout: 15_000,
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+        "AppleWebKit/537.36 (KHTML, like Gecko) " +
+        "Chrome/124.0.0.0 Safari/537.36",
+      "Accept-Language": "en-US,en;q=0.9,bn;q=0.8",
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+      Connection: "keep-alive",
+    },
+  });
+  return data;
+}
+
+// ─────────────────────────────────────────────
+//  Puppeteer launcher — LOCAL ONLY
+//  LESSON: dynamic import is used so the module
+//  is never loaded on production (Render).
+//  If puppeteer is not installed, this won't crash.
+// ─────────────────────────────────────────────
 async function launchBrowser() {
-  return puppeteer.launch({
+  const puppeteer = await import("puppeteer");
+  return puppeteer.default.launch({
     headless: true,
     args: [
       "--no-sandbox",
@@ -86,44 +112,10 @@ async function launchBrowser() {
   });
 }
 
-/**
- * Cheerio-based HTML fetch — used as fallback for static sites.
- *
- * LESSON — Cheerio vs Puppeteer:
- * Cheerio: downloads raw HTML only, fast but blind to JavaScript.
- * Puppeteer: launches real Chrome, runs JS, sees the fully rendered DOM.
- * Modern sites like Daraz/Chaldal need Puppeteer — Cheerio gets empty shells.
- */
-async function fetchHTML(url: string): Promise<string> {
-  const { data } = await axios.get<string>(url, {
-    timeout: 10_000,
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-        "AppleWebKit/537.36 (KHTML, like Gecko) " +
-        "Chrome/124.0.0.0 Safari/537.36",
-      "Accept-Language": "en-US,en;q=0.9",
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    },
-  });
-  return data;
-}
-
 // ─────────────────────────────────────────────
-//  Daraz scraper
-//
-//  LESSON — Key decisions from debugging:
-//  ✅ [data-qa-locator="product-item"] → stable selector, Daraz uses it
-//     for their own QA tests so they never rename it. Class names like
-//     "Bm3ON" are hashed and change every deployment — avoid those.
-//  ✅ Block images/fonts/css → we only need DOM data, not visuals.
-//     This speeds up page load significantly.
-//  ✅ page.evaluate() → runs inside real Chrome browser context,
-//     not in Node.js. Think of it as opening DevTools console.
-//  ✅ waitForSelector → pauses until element exists in DOM.
-//     Without this, evaluate() runs before React renders products.
+//  Daraz — Puppeteer scraper (local development)
 // ─────────────────────────────────────────────
-async function scrapeDaraz(query: string): Promise<ScrapedPrice> {
+async function scrapeDarazPuppeteer(query: string): Promise<ScrapedPrice> {
   const url = `https://www.daraz.com.bd/catalog/?q=${encodeURIComponent(query)}`;
   const source = "Daraz BD";
   const browser = await launchBrowser();
@@ -132,7 +124,7 @@ async function scrapeDaraz(query: string): Promise<ScrapedPrice> {
     const page = await browser.newPage();
 
     await page.setRequestInterception(true);
-    page.on("request", (req) => {
+    page.on("request", (req: any) => {
       if (
         ["image", "font", "stylesheet", "media"].includes(req.resourceType())
       ) {
@@ -154,7 +146,7 @@ async function scrapeDaraz(query: string): Promise<ScrapedPrice> {
       );
       return Array.from(cards)
         .slice(0, 5)
-        .map((card) => ({ fullText: card.textContent?.trim() ?? "" }));
+        .map((card: any) => ({ fullText: card.textContent?.trim() ?? "" }));
     });
 
     let productName = query;
@@ -179,7 +171,7 @@ async function scrapeDaraz(query: string): Promise<ScrapedPrice> {
       scrapedAt: new Date(),
     };
   } catch (err) {
-    console.error("scrapeDaraz error:", (err as Error).message);
+    console.error("scrapeDaraz Puppeteer error:", (err as Error).message);
     return {
       source,
       url,
@@ -189,23 +181,108 @@ async function scrapeDaraz(query: string): Promise<ScrapedPrice> {
       scrapedAt: new Date(),
     };
   } finally {
-    // LESSON: always close browser in finally — if you forget,
-    // Chrome processes pile up and eventually crash your server
     await browser.close();
   }
 }
 
 // ─────────────────────────────────────────────
-//  Chaldal scraper
+//  Daraz — Cheerio scraper (production / Render)
 //
-//  LESSON — Key decisions from debugging:
-//  ✅ ".productPane" → confirmed by debug output to contain real products
-//  ❌ ".name" → matched sidebar nav links (Coupons, Offers) not products
-//  ❌ ".price" → matched a coupon banner price, not a product price
-//  ✅ Chaldal sells groceries — clothing searches return limited results
-//     (T-shirt may return combo packs that include a shirt as a gift)
+//  LESSON: Daraz is React-rendered so Cheerio won't
+//  see product cards. Instead we use their internal
+//  API endpoint which returns JSON directly —
+//  no JS rendering needed!
+//
+//  Daraz has a search API at:
+//  https://www.daraz.com.bd/catalog/?ajax=true&q=...
+//  This returns JSON with product data including prices.
 // ─────────────────────────────────────────────
-async function scrapeChaldal(query: string): Promise<ScrapedPrice> {
+async function scrapeDarazCheerio(query: string): Promise<ScrapedPrice> {
+  const url = `https://www.daraz.com.bd/catalog/?q=${encodeURIComponent(query)}`;
+  const source = "Daraz BD";
+
+  try {
+    // Use Daraz's internal API — returns JSON, no JS rendering needed
+    const apiUrl = `https://www.daraz.com.bd/catalog/?ajax=true&q=${encodeURIComponent(query)}&page=1`;
+
+    const { data } = await axios.get(apiUrl, {
+      timeout: 15_000,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+          "AppleWebKit/537.36 (KHTML, like Gecko) " +
+          "Chrome/124.0.0.0 Safari/537.36",
+        Accept: "application/json, text/javascript, */*; q=0.01",
+        "X-Requested-With": "XMLHttpRequest",
+        Referer: `https://www.daraz.com.bd/catalog/?q=${encodeURIComponent(query)}`,
+      },
+    });
+
+    // Daraz API returns items array with price info
+    const items =
+      data?.mods?.listItems ?? data?.rgv587_aisearchhack?.listItems ?? [];
+
+    if (items.length > 0) {
+      const first = items[0];
+      const rawPrice = first.price ?? first.priceShow ?? "";
+      const name = first.name ?? first.title ?? query;
+
+      return {
+        source,
+        url,
+        productName: String(name).slice(0, 100),
+        price: extractFirstPrice(String(rawPrice)),
+        currency: "BDT",
+        scrapedAt: new Date(),
+      };
+    }
+
+    // Fallback: parse the HTML page
+    const html = await fetchHTML(url);
+    const $ = cheerio.load(html);
+
+    // Try to find JSON data embedded in script tags (Next.js/SSR pattern)
+    let price: number | null = null;
+    let productName = query;
+
+    $("script").each((_, el) => {
+      const content = $(el).html() ?? "";
+      // Look for price patterns in embedded JSON
+      const priceMatch = content.match(/"price"\s*:\s*"?([\d.]+)"?/);
+      const nameMatch = content.match(/"name"\s*:\s*"([^"]+)"/);
+      if (priceMatch && !price) {
+        price = parseFloat(priceMatch[1]);
+      }
+      if (nameMatch && productName === query) {
+        productName = nameMatch[1].slice(0, 100);
+      }
+    });
+
+    return {
+      source,
+      url,
+      productName,
+      price,
+      currency: "BDT",
+      scrapedAt: new Date(),
+    };
+  } catch (err) {
+    console.error("scrapeDaraz Cheerio error:", (err as Error).message);
+    return {
+      source,
+      url: "",
+      productName: query,
+      price: null,
+      currency: "BDT",
+      scrapedAt: new Date(),
+    };
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Chaldal — Puppeteer scraper (local development)
+// ─────────────────────────────────────────────
+async function scrapeChaldalPuppeteer(query: string): Promise<ScrapedPrice> {
   const url = `https://chaldal.com/search/${encodeURIComponent(query)}`;
   const source = "Chaldal";
   const browser = await launchBrowser();
@@ -214,7 +291,7 @@ async function scrapeChaldal(query: string): Promise<ScrapedPrice> {
     const page = await browser.newPage();
 
     await page.setRequestInterception(true);
-    page.on("request", (req) => {
+    page.on("request", (req: any) => {
       if (
         ["image", "font", "stylesheet", "media"].includes(req.resourceType())
       ) {
@@ -225,7 +302,6 @@ async function scrapeChaldal(query: string): Promise<ScrapedPrice> {
     });
 
     await page.goto(url, { waitUntil: "networkidle2", timeout: 30_000 });
-    // .catch(() => null) → if selector not found, don't throw, just continue
     await page
       .waitForSelector(".productPane", { timeout: 10_000 })
       .catch(() => null);
@@ -234,15 +310,14 @@ async function scrapeChaldal(query: string): Promise<ScrapedPrice> {
     const result = await page.evaluate(() => {
       const cards = document.querySelectorAll(".productPane");
       if (cards.length === 0) {
-        // Fallback selector confirmed by debug output
         const cards2 = document.querySelectorAll(".productV2Catalog");
         return Array.from(cards2)
           .slice(0, 5)
-          .map((c) => ({ fullText: c.textContent?.trim() ?? "" }));
+          .map((c: any) => ({ fullText: c.textContent?.trim() ?? "" }));
       }
       return Array.from(cards)
         .slice(0, 5)
-        .map((card) => ({ fullText: card.textContent?.trim() ?? "" }));
+        .map((card: any) => ({ fullText: card.textContent?.trim() ?? "" }));
     });
 
     let productName = query;
@@ -252,8 +327,6 @@ async function scrapeChaldal(query: string): Promise<ScrapedPrice> {
       const extracted = extractFirstPrice(item.fullText);
       if (extracted !== null) {
         price = extracted;
-        // Chaldal text format: "Out of Stock৳500Tara Care Combo Pack..."
-        // Name comes after the price digits
         const parts = item.fullText.split("৳");
         if (parts.length > 1) {
           const afterPrice = parts[1].replace(/^[\d,\s]+/, "").trim();
@@ -272,7 +345,7 @@ async function scrapeChaldal(query: string): Promise<ScrapedPrice> {
       scrapedAt: new Date(),
     };
   } catch (err) {
-    console.error("scrapeChaldal error:", (err as Error).message);
+    console.error("scrapeChaldal Puppeteer error:", (err as Error).message);
     return {
       source,
       url,
@@ -287,19 +360,81 @@ async function scrapeChaldal(query: string): Promise<ScrapedPrice> {
 }
 
 // ─────────────────────────────────────────────
-//  Direct URL scraper — Puppeteer + Cheerio fallback
+//  Chaldal — Cheerio scraper (production / Render)
 //
-//  LESSON — Two-layer strategy:
-//  1. Try Puppeteer first (handles JS-rendered sites)
-//  2. If Puppeteer fails, fall back to Cheerio (handles static sites)
-//  This makes the scraper work on the widest range of sites.
+//  LESSON: Chaldal has an internal API too.
+//  Their app fetches product data from:
+//  https://chaldal.com/api/Category/...
+//  We use their search endpoint that returns JSON.
+// ─────────────────────────────────────────────
+async function scrapeChaldalCheerio(query: string): Promise<ScrapedPrice> {
+  const url = `https://chaldal.com/search/${encodeURIComponent(query)}`;
+  const source = "Chaldal";
+
+  try {
+    // Chaldal internal search API
+    const apiUrl = `https://chaldal.com/api/Search?searchString=${encodeURIComponent(query)}`;
+
+    const { data } = await axios.get(apiUrl, {
+      timeout: 15_000,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+          "AppleWebKit/537.36 (KHTML, like Gecko) " +
+          "Chrome/124.0.0.0 Safari/537.36",
+        Accept: "application/json",
+        Referer: "https://chaldal.com",
+      },
+    });
+
+    // Chaldal returns array of products
+    const products = Array.isArray(data) ? data : (data?.products ?? []);
+
+    if (products.length > 0) {
+      const first = products[0];
+      const price = first.price ?? first.regularPrice ?? null;
+      const name = first.name ?? first.productName ?? query;
+
+      return {
+        source,
+        url,
+        productName: String(name).slice(0, 100),
+        price: price ? parseFloat(String(price)) : null,
+        currency: "BDT",
+        scrapedAt: new Date(),
+      };
+    }
+
+    return {
+      source,
+      url,
+      productName: query,
+      price: null,
+      currency: "BDT",
+      scrapedAt: new Date(),
+    };
+  } catch (err) {
+    console.error("scrapeChaldal Cheerio error:", (err as Error).message);
+    return {
+      source,
+      url: "",
+      productName: query,
+      price: null,
+      currency: "BDT",
+      scrapedAt: new Date(),
+    };
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Direct URL scraper — Puppeteer + Cheerio fallback
 // ─────────────────────────────────────────────
 export async function scrapeDirectURL(url: string): Promise<ScrapedPrice> {
   const source = new URL(url).hostname;
 
   const priceSelectors = [
-    '[itemprop="price"]', // Schema.org — most stable standard
-    '[data-qa-locator="product-item"]', // Daraz listing pages
+    '[itemprop="price"]',
+    '[data-qa-locator="product-item"]',
     '[class*="price"]',
     '[class*="Price"]',
     ".product-price",
@@ -314,139 +449,166 @@ export async function scrapeDirectURL(url: string): Promise<ScrapedPrice> {
     '[class*="product-name"]',
   ];
 
-  const browser = await launchBrowser();
+  // Try Puppeteer on local, Cheerio on production
+  if (!IS_PRODUCTION) {
+    const browser = await launchBrowser();
+    try {
+      const page = await browser.newPage();
+      await page.setRequestInterception(true);
+      page.on("request", (req: any) => {
+        if (
+          ["image", "font", "stylesheet", "media"].includes(req.resourceType())
+        ) {
+          req.abort();
+        } else {
+          req.continue();
+        }
+      });
+      await page.goto(url, { waitUntil: "networkidle2", timeout: 30_000 });
+      await new Promise((r) => setTimeout(r, 2000));
 
-  try {
-    const page = await browser.newPage();
+      const result = await page.evaluate(
+        (priceSelectors: string[], titleSelectors: string[]) => {
+          const darazCards = document.querySelectorAll(
+            '[data-qa-locator="product-item"]',
+          );
+          if (darazCards.length > 0) {
+            const text = darazCards[0].textContent?.trim() ?? "";
+            return {
+              fullText: text,
+              isDarazListing: true,
+              name: "",
+              price: "",
+            };
+          }
+          let price = "";
+          for (const sel of priceSelectors) {
+            const el = document.querySelector(sel);
+            if (el?.textContent?.trim()) {
+              price = el.textContent.trim();
+              break;
+            }
+          }
+          let name = "";
+          for (const sel of titleSelectors) {
+            const el = document.querySelector(sel);
+            if (el?.textContent?.trim()) {
+              name = el.textContent.trim();
+              break;
+            }
+          }
+          return { price, name, isDarazListing: false, fullText: "" };
+        },
+        priceSelectors,
+        titleSelectors,
+      );
 
-    await page.setRequestInterception(true);
-    page.on("request", (req) => {
-      if (
-        ["image", "font", "stylesheet", "media"].includes(req.resourceType())
-      ) {
-        req.abort();
-      } else {
-        req.continue();
+      if (result.isDarazListing) {
+        const price = extractFirstPrice(result.fullText);
+        const namePart = result.fullText.split("৳")[0].trim().slice(0, 100);
+        return {
+          source,
+          url,
+          productName: namePart,
+          price,
+          currency: "BDT",
+          scrapedAt: new Date(),
+        };
       }
-    });
 
-    await page.goto(url, { waitUntil: "networkidle2", timeout: 30_000 });
-    await new Promise((r) => setTimeout(r, 2000));
-
-    // LESSON: page.evaluate() can receive Node.js variables as arguments.
-    // Anything inside evaluate() runs in browser context — it can't access
-    // Node.js variables directly, so we pass them as parameters.
-    const result = await page.evaluate(
-      (priceSelectors, titleSelectors) => {
-        // Check if it's a Daraz listing page
-        const darazCards = document.querySelectorAll(
-          '[data-qa-locator="product-item"]',
-        );
-        if (darazCards.length > 0) {
-          const text = darazCards[0].textContent?.trim() ?? "";
-          return { fullText: text, isDarazListing: true, name: "", price: "" };
-        }
-
-        let price = "";
-        for (const sel of priceSelectors) {
-          const el = document.querySelector(sel);
-          if (el?.textContent?.trim()) {
-            price = el.textContent.trim();
-            break;
-          }
-        }
-
-        let name = "";
-        for (const sel of titleSelectors) {
-          const el = document.querySelector(sel);
-          if (el?.textContent?.trim()) {
-            name = el.textContent.trim();
-            break;
-          }
-        }
-
-        return { price, name, isDarazListing: false, fullText: "" };
-      },
-      priceSelectors,
-      titleSelectors,
-    );
-
-    if (result.isDarazListing) {
-      const price = extractFirstPrice(result.fullText);
-      const namePart = result.fullText.split("৳")[0].trim().slice(0, 100);
       return {
         source,
         url,
-        productName: namePart,
-        price,
+        productName: result.name,
+        price: extractFirstPrice(result.price),
         currency: "BDT",
         scrapedAt: new Date(),
       };
+    } catch {
+      // fall through to Cheerio
+    } finally {
+      await browser.close();
+    }
+  }
+
+  // Cheerio fallback (always used on production)
+  try {
+    const html = await fetchHTML(url);
+    const $ = cheerio.load(html);
+
+    // Check for Daraz listing — try JSON in script tags
+    let price: number | null = null;
+    let productName = "";
+
+    $("script").each((_, el) => {
+      const content = $(el).html() ?? "";
+      if (content.includes("price") && !price) {
+        const priceMatch = content.match(/"price"\s*:\s*"?([\d.]+)"?/);
+        const nameMatch = content.match(/"name"\s*:\s*"([^"]{5,100})"/);
+        if (priceMatch) price = parseFloat(priceMatch[1]);
+        if (nameMatch && !productName) productName = nameMatch[1];
+      }
+    });
+
+    if (!price) {
+      for (const sel of priceSelectors) {
+        const text = $(sel).first().text().trim();
+        if (text) {
+          price = extractFirstPrice(text);
+          break;
+        }
+      }
+    }
+
+    if (!productName) {
+      for (const sel of titleSelectors) {
+        const text = $(sel).first().text().trim();
+        if (text) {
+          productName = text.slice(0, 100);
+          break;
+        }
+      }
     }
 
     return {
       source,
       url,
-      productName: result.name,
-      price: extractFirstPrice(result.price),
+      productName,
+      price,
       currency: "BDT",
       scrapedAt: new Date(),
     };
   } catch {
-    // Puppeteer failed — fall back to Cheerio for simple static pages
-    try {
-      const html = await fetchHTML(url);
-      const $ = cheerio.load(html);
-
-      let rawPrice = "";
-      for (const sel of priceSelectors) {
-        const text = $(sel).first().text().trim();
-        if (text) {
-          rawPrice = text;
-          break;
-        }
-      }
-
-      let rawName = "";
-      for (const sel of titleSelectors) {
-        const text = $(sel).first().text().trim();
-        if (text) {
-          rawName = text;
-          break;
-        }
-      }
-
-      return {
-        source,
-        url,
-        productName: rawName,
-        price: extractFirstPrice(rawPrice),
-        currency: "BDT",
-        scrapedAt: new Date(),
-      };
-    } catch {
-      return {
-        source,
-        url,
-        productName: "",
-        price: null,
-        currency: "BDT",
-        scrapedAt: new Date(),
-      };
-    }
-  } finally {
-    await browser.close();
+    return {
+      source,
+      url,
+      productName: "",
+      price: null,
+      currency: "BDT",
+      scrapedAt: new Date(),
+    };
   }
 }
 
 // ─────────────────────────────────────────────
+//  Unified scrapers — auto-switch based on env
+// ─────────────────────────────────────────────
+async function scrapeDaraz(query: string): Promise<ScrapedPrice> {
+  if (IS_PRODUCTION) {
+    return scrapeDarazCheerio(query);
+  }
+  return scrapeDarazPuppeteer(query);
+}
+
+async function scrapeChaldal(query: string): Promise<ScrapedPrice> {
+  if (IS_PRODUCTION) {
+    return scrapeChaldalCheerio(query);
+  }
+  return scrapeChaldalPuppeteer(query);
+}
+
+// ─────────────────────────────────────────────
 //  Main service function
-//
-//  LESSON — Sequential vs Parallel:
-//  Cheerio scrapers → use Promise.allSettled (parallel) — lightweight
-//  Puppeteer scrapers → run sequentially — each launches a real Chrome
-//  process (~150MB RAM). Running 3 in parallel risks crashing the server,
-//  especially on Render's free tier (512MB RAM limit).
 // ─────────────────────────────────────────────
 export async function getCompetitorPriceSuggestion(
   productName: string,
