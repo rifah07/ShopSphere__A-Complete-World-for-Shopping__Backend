@@ -1,10 +1,8 @@
 # 🛍️ ShopSphere Backend – A Complete World for Shopping (API)
 
-ShopSphere is a full-featured backend API for an advanced e-commerce platform, supporting features such as product management, cart, orders, reviews, payment, revenue tracking, and user roles. This backend is built using **Node.js**, **Express.js**, **TypeScript**, and **MongoDB**, and includes robust middleware, security, and API documentation with **Swagger**.
+ShopSphere is a full-featured backend API for an advanced multivendor e-commerce platform, supporting product management, cart, orders, reviews, payment, revenue tracking, user roles, and AI-powered competitor price suggestions via web scraping. Built using **Node.js**, **Express.js**, **TypeScript**, and **MongoDB**, with robust middleware, security, and API documentation via **Swagger**.
 
 ## 🌐 Live API Docs
-
-Access the live Swagger API documentation:
 
 👉 [https://shopsphere-a-complete-world-for-shopping.onrender.com/api-docs](https://shopsphere-a-complete-world-for-shopping.onrender.com/api-docs)
 
@@ -12,131 +10,232 @@ Access the live Swagger API documentation:
 
 ## 🧰 Tech Stack
 
-| Layer        | Technology         |
-|--------------|--------------------|
-| Runtime      | Node.js            |
-| Language     | TypeScript         |
-| Framework    | Express.js         |
-| Database     | MongoDB            |
-| Validation   | Zod                |
-| Auth         | JWT, Cookies       |
-| Logging      | Morgan + Winston   |
-| Security     | Helmet, Rate Limiting, CORS |
-| Documentation| Swagger (OpenAPI)  |
+| Layer         | Technology                  |
+| ------------- | --------------------------- |
+| Runtime       | Node.js                     |
+| Language      | TypeScript                  |
+| Framework     | Express.js v5               |
+| Database      | MongoDB + Mongoose          |
+| Validation    | Zod + Express Validator     |
+| Auth          | JWT + Cookies               |
+| Payments      | Stripe + PayPal             |
+| Scraping      | Puppeteer + Cheerio + Axios |
+| Email         | Nodemailer                  |
+| Logging       | Morgan + Winston            |
+| Security      | Helmet, Rate Limiting, CORS |
+| Documentation | Swagger (OpenAPI 3.0)       |
 
 ---
 
 ## 🚀 Features
 
 ### 🧑‍💻 Users
+
 - Register, login, logout
-- Role-based access (admin, seller, buyer)
+- Role-based access control (admin, seller, buyer)
 - Profile management
 - Password reset and change
+- Account ban management (admin)
 
 ### 🛍️ Products
-- CRUD operations for products
-- Filtering, searching, sorting
+
+- Full CRUD for products
+- Filtering, searching, pagination, sorting
+- Soft delete and restore (trash system)
 - Seller-specific product management
+- Product Q&A (buyers ask, sellers answer)
+- Discount management (percentage & fixed)
 
 ### ❤️ Wishlist
+
 - Add/remove products from wishlist
 
 ### 🛒 Cart
-- Add/remove/update cart items
+
+- Add, remove, update cart items
+- Default shipping address on cart
 
 ### 📦 Orders
-- Place, view, cancel orders
-- Order status management
-- Shipment status management 
+
+- Place orders (from cart or direct)
+- Order status and shipment tracking
+- Cancel orders
+- COD, Stripe, PayPal payment support
 
 ### 💳 Payment
-- Process payments (integrated via Stripe and paypal in full implementation)
+
+- Stripe payment integration
+- PayPal payment integration
+- Cash on Delivery (COD)
 
 ### 🎟️ Coupons
-- Apply coupons during checkout
-- Admin, Seller manages own coupons
+
+- Create and manage coupons
+- Apply during checkout
+- Usage limits and expiry dates
+- Admin and seller manage own coupons
 
 ### 🔁 Refunds
+
 - Request and manage refunds
 
 ### 🌟 Reviews
+
 - Submit and view product reviews
+- Average rating auto-update on product
 
 ### 📈 Revenue
+
 - Revenue tracking for admin and seller dashboards
+
+### 🔍 Competitor Price Scraping _(New)_
+
+- Sellers get AI-powered pricing suggestions based on live competitor data
+- Scrapes **Daraz Bangladesh** using Puppeteer (headless Chrome) — handles JS-rendered pages
+- Scrapes **Chaldal** for grocery/household product pricing
+- Supports custom competitor URLs — sellers paste any product link
+- Smart suggestion engine: compares your price vs market average and recommends optimal pricing
+- Protected routes — sellers and admins only
 
 ---
 
 ## 🗂️ Project Structure
 
+```
 backend/
 ├── src/
 │   ├── config/
-│   │   └── db.ts                   # MongoDB connection setup
-│
+│   │   └── db.ts                      # MongoDB connection
 │   ├── handler/
-│   │   └── errorHandler.ts        # Global error handling middleware
-│
+│   │   └── errorHandler.ts            # Global error handler
 │   ├── managers/
-│   │   ├── emailManager.ts        # Email-related logic (Mailtrap)
-│   │   └── jwtManager.ts          # JWT token generation & verification
-│
+│   │   ├── emailManager.ts            # Nodemailer email logic
+│   │   └── jwtManager.ts             # JWT generation & verification
 │   ├── middlewares/
-│   │   ├── authMiddleware.ts      # Auth protection middleware
-│   │   └── authorize.ts           # Role-based access control
-│
-│   ├── models/                    # Mongoose models (User, Product, Order, etc.)
-│
-│   ├── modules/                   # Feature-based modules (users, products, etc.)
+│   │   ├── authMiddleware.ts          # JWT auth protection
+│   │   └── authorize.ts              # Role-based access control
+│   ├── models/                        # Mongoose models
+│   │   ├── cart.model.ts
+│   │   ├── coupon.model.ts
+│   │   ├── order.model.ts
+│   │   ├── product.model.ts
+│   │   ├── refreshToken.model.ts
+│   │   ├── refund.model.ts
+│   │   ├── review.model.ts
+│   │   ├── user.model.ts
+│   │   └── wishlist.model.ts
+│   ├── modules/                       # Feature-based modules
+│   │   ├── cart/
+│   │   ├── coupon/
+│   │   ├── orders/
+│   │   ├── payment/
+│   │   ├── products/
+│   │   ├── refund/
+│   │   ├── revenue/
+│   │   ├── review/
+│   │   ├── scraping/                  # ← New: competitor price scraping
+│   │   │   ├── scraping.controller.ts
+│   │   │   ├── scraping.routes.ts
+│   │   │   ├── scraping.validator.ts
+│   │   │   └── scraping.docs.ts
 │   │   ├── users/
-│   │   │   ├── controllers/
-            ├── users.routes.ts
-            ├── users.docs.ts
-│   │   │   └── ...
-│   │   └── ...                    # Similar structure for other modules
-│
-│   ├── services/                  
-│
-│   ├── swagger/
-│   │   └── ...                    # Swagger configuration and docs
-│
+│   │   └── wishlist/
+│   ├── services/
+│   │   └── priceScraper.service.ts    # ← New: Puppeteer + Cheerio scraping logic
+│   ├── swagger/                       # Swagger configuration
 │   ├── utils/
-│   │   ├── AppError.ts            # Custom error class
-│   │   ├── cartItem.ts            # Utility functions for cart management
-│   │   ├── catchAsync.ts          # Wrapper to catch async errors
-│   │   ├── errors.ts              # Centralized error messages
-│   │   └── logger.ts              # Winston/Morgan logger setup
-│
+│   │   ├── catchAsync.ts
+│   │   ├── errors.ts
+│   │   ├── logger.ts
+│   │   └── param.ts                  # ← New: req.params type-safe helper
 │   ├── validators/
-│   │   ├── product.validator.ts   # Zod schema for product validation
-│   │   └── user.validator.ts      # Zod schema for user validation
-│
-│   ├── app.ts                     # Main Express app configuration
-│   └── server.ts                  # Entry point - starts the server
-│
-├── .env                           # Environment variables
-├── .example.env                   # Sample environment file
+│   │   ├── product.validator.ts
+│   │   └── user.validator.ts
+│   ├── app.ts
+│   └── server.ts
+├── .env
+├── .example.env
 ├── .gitignore
 ├── nodemon.json
 ├── package.json
-├── package-lock.json
 ├── tsconfig.json
-├── stepsOfProject.md              # Project development plan or docs
-└── README.md                      # Project overview and usage
+└── README.md
+```
+
+---
+
+## 🔍 Scraping API Endpoints
+
+| Method | Endpoint                                    | Description                                  | Access        |
+| ------ | ------------------------------------------- | -------------------------------------------- | ------------- |
+| POST   | `/api/scraping/price-suggestion/:productId` | Get price suggestion for existing product    | Seller, Admin |
+| POST   | `/api/scraping/price-suggestion/manual`     | Get price suggestion before creating product | Seller, Admin |
+| POST   | `/api/scraping/scrape-url`                  | Scrape any single competitor URL             | Seller, Admin |
 
 ---
 
 ## 🧪 API Testing
-Use Swagger for easy testing:
--📄 Swagger UI: [https://shopsphere-a-complete-world-for-shopping.onrender.com/api-docs](https://shopsphere-a-complete-world-for-shopping.onrender.com/api-docs/)
+
+Use the live Swagger UI for easy testing:
+📄 [https://shopsphere-a-complete-world-for-shopping.onrender.com/api-docs](https://shopsphere-a-complete-world-for-shopping.onrender.com/api-docs/)
 
 ---
 
 ## ✨ Upcoming (Frontend - In Sha Allah)
-The React frontend will be built in a separate repository and integrated with this backend via secure REST APIs.
+
+The React/Next.js frontend will be built in a separate repository and integrated with this backend via secure REST APIs.
 
 ---
 
-## Acknowledgements
-Developed by Rifah Sajida Deya
+## 💡 Upcoming Future Features (In Sha Allah)
+
+### 🤖 AI & Smart Features
+
+- **AI Product Description Generator** — seller types a product name, AI writes the full description (OpenAI API)
+- **Smart Search with NLP** — search understands "cheap red shirt under 500 taka" not just exact keywords (Elasticsearch or MongoDB Atlas Search)
+- **Recommendation Engine** — "Customers also bought" based on order history (collaborative filtering)
+- **Fake Review Detection** — ML model to flag suspicious reviews
+
+### 📊 Analytics & Business Intelligence
+
+- **Seller Dashboard Analytics** — charts for daily/weekly/monthly sales, top products, revenue trends
+- **Inventory Alerts** — email seller when stock drops below threshold
+- **Price History Tracking** — store scraped prices over time, show trend graphs to sellers
+- **Abandoned Cart Recovery** — email buyers who left items in cart without ordering
+
+### 🔔 Notifications
+
+- **Real-time Notifications** — WebSocket (Socket.io) for order updates, new questions, review alerts
+- **Push Notifications** — for mobile app integration (Firebase FCM)
+- **Email Templates** — beautiful HTML emails for order confirmation, shipping updates (React Email or MJML)
+
+### 🛡️ Security & Compliance
+
+- **Two-Factor Authentication (2FA)** — OTP via email or authenticator app
+- **Audit Logs** — track who changed what and when (important for admin)
+- **GDPR Compliance** — data export and account deletion endpoints
+- **IP-based Rate Limiting per User** — prevent scraping/abuse of your own API
+
+### 🌍 Scalability
+
+- **Redis Caching** — cache product listings, scraping results (avoid re-scraping same query within 1 hour)
+- **Image Upload** — Cloudinary or AWS S3 integration for product images instead of URL strings
+- **Background Jobs** — Bull/BullMQ queue for sending emails, processing orders asynchronously
+- **Microservices Ready** — split scraping, payments, notifications into separate services
+
+### 🛒 E-commerce Specific
+
+- **Flash Sales** — time-limited discounts with countdown
+- **Bundle Deals** — buy 2 get 1 free type offers
+- **Loyalty Points System** — buyers earn points per purchase, redeem for discounts
+- **Multi-currency Support** — show prices in USD, BDT, EUR based on user location
+- **Product Variants** — size (S/M/L/XL), color, weight options per product
+- **Seller Verification** — document upload and admin approval flow for new sellers
+
+---
+
+## 👩‍💻 Developed By
+
+**Rifah Sajida Deya**
+BSc in Computer Science & Engineering — Jagannath University, 2025
+Backend Engineer | MERN Stack Developer
