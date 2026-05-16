@@ -9,14 +9,6 @@ import authorize from "../../middlewares/authorize";
 
 const router = Router();
 
-// GET  /api/scraping/price-suggestion/:productId
-router.post(
-  "/price-suggestion/:productId",
-  auth,
-  authorize("seller", "admin"),
-  getPriceSuggestionForProduct,
-);
-
 // POST /api/scraping/price-suggestion/manual
 router.post(
   "/price-suggestion/manual",
@@ -27,5 +19,13 @@ router.post(
 
 // POST /api/scraping/scrape-url
 router.post("/scrape-url", auth, authorize("seller", "admin"), scrapeSingleURL);
+
+// POST /api/scraping/price-suggestion/:productId
+router.post(
+  "/price-suggestion/:productId",
+  auth,
+  authorize("seller", "admin"),
+  getPriceSuggestionForProduct,
+);
 
 export default router;
